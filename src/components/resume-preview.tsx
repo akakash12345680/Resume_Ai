@@ -25,6 +25,7 @@ const TemplateWrapper = ({
 
   return (
     <div
+      id="resume-preview"
       className={cn(
         'bg-white text-black aspect-[8.5/11] w-full max-w-4xl mx-auto p-8 lg:p-12 shadow-2xl rounded-lg resume-preview-container',
         fontClass

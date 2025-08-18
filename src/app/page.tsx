@@ -5,7 +5,7 @@ import type { ResumeData } from '@/lib/types';
 import EditorPanel from '@/components/editor-panel';
 import ResumePreview from '@/components/resume-preview';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, FileType } from 'lucide-react';
+import { Download, FileText, FileType, Loader2 } from 'lucide-react';
 import { AppLogo } from '@/components/icons';
 import {
   DropdownMenu,
@@ -13,6 +13,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 
 const initialResumeData: ResumeData = {
@@ -59,10 +61,47 @@ const initialResumeData: ResumeData = {
 
 export default function Home() {
   const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
-  }
+  const handleDownloadPdf = () => {
+    setIsDownloading(true);
+    const resumeElement = document.getElementById('resume-preview');
+    if (resumeElement) {
+      html2canvas(resumeElement, {
+        scale: 2, // Increase scale for better quality
+        useCORS: true, 
+        logging: false
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        // A4 dimensions in points: 595.28 x 841.89
+        const pdf = new jsPDF({
+          orientation: 'p',
+          unit: 'pt',
+          format: 'a4',
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const ratio = canvasWidth / canvasHeight;
+        const newWidth = pdfWidth;
+        const newHeight = newWidth / ratio;
+        
+        // if content is larger than page, scale it down
+        const height = newHeight > pdfHeight ? pdfHeight : newHeight;
+        const width = height === pdfHeight ? pdfHeight * ratio : newWidth;
+
+
+        pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+        pdf.save(`${resumeData.name.replace(' ', '_')}_Resume.pdf`);
+        setIsDownloading(false);
+      }).catch(err => {
+        console.error("Error generating PDF:", err);
+        setIsDownloading(false);
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -73,13 +112,17 @@ export default function Home() {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
+            <Button disabled={isDownloading}>
+              {isDownloading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
               Download
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onClick={handlePrint}>
+            <DropdownMenuItem onClick={handleDownloadPdf} disabled={isDownloading}>
               <FileText className="mr-2 h-4 w-4" />
               PDF
             </DropdownMenuItem>
